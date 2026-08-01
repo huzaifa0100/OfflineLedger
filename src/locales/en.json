@@ -1,0 +1,92 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "done": "Done",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "emptyState": "Nothing here yet"
+  },
+  "workers": {
+    "title": "Clients",
+    "addWorker": "Add Client",
+    "editWorker": "Edit Client",
+    "searchPlaceholder": "Search clients by name, phone or CNIC...",
+    "noWorkers": "No clients added yet",
+    "noWorkersHint": "Tap the + button to add your first client",
+    "deleteTitle": "Delete Client",
+    "deleteMessage": "This will permanently delete {{name}} and all their data (documents, notes, balance). This cannot be undone.",
+    "fields": {
+      "name": "Full Name",
+      "phone": "Phone Number",
+      "email": "Email (optional)",
+      "address": "Address (optional)",
+      "cnic": "CNIC (optional)",
+      "avatar": "Profile Photo"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "addDocument": "Add Document",
+    "documentTitle": "Document Title",
+    "noDocuments": "No documents uploaded",
+    "noDocumentsHint": "Tap + to add from camera or gallery",
+    "pickSource": "Add Photo",
+    "camera": "Take Photo",
+    "gallery": "Choose from Gallery",
+    "deleteTitle": "Delete Document",
+    "deleteMessage": "Are you sure you want to delete this document?"
+  },
+  "notepad": {
+    "title": "Notes",
+    "placeholder": "Write notes here...",
+    "lastEdited": "Last edited {{date}}",
+    "characters": "{{count}} characters"
+  },
+  "balance": {
+    "title": "Balance",
+    "totalBalance": "Total Balance",
+    "totalAdvances": "Total Advances",
+    "remaining": "Remaining",
+    "addAdvance": "Add Advance",
+    "advanceAmount": "Amount",
+    "advanceDescription": "Description (optional)",
+    "advanceDateLabel": "{{date}} at {{time}}",
+    "noAdvances": "No advances recorded",
+    "noAdvancesHint": "Tap + to record an advance payment",
+    "deleteAdvance": "Delete this advance entry?",
+    "editTotalBalance": "Set Total Balance",
+    "overdrafted": "Overdrafted"
+  },
+  "tabs": {
+    "workers": "Workers",
+    "settings": "Settings"
+  },
+  "lock": {
+    "title": "OfflineLedger",
+    "subtitle": "Enter your PIN to continue",
+    "useBiometric": "Use Fingerprint",
+    "setPin": "Set a PIN",
+    "setPinHint": "Choose a 4-digit PIN to protect your data",
+    "confirmPin": "Confirm PIN",
+    "pinMismatch": "PINs do not match. Try again.",
+    "pinSet": "PIN set successfully"
+  },
+  "backup": {
+    "title": "Backup & Restore",
+    "export": "Export Backup",
+    "exportHint": "Save a ZIP of all your data to Downloads",
+    "exportSuccess": "Backup saved to Downloads",
+    "import": "Restore from Backup",
+    "importHint": "Select a .zip backup file to restore",
+    "importWarning": "This will replace ALL current data. Are you sure?",
+    "importSuccess": "Data restored successfully"
+  }
+}

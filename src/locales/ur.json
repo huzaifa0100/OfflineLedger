@@ -1,0 +1,18 @@
+{
+  "_note": "Urdu translations — Phase 10 / V2. Keys mirror en.json exactly.",
+  "common": {
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ",
+    "delete": "حذف کریں",
+    "edit": "ترمیم",
+    "add": "شامل کریں",
+    "back": "واپس",
+    "done": "مکمل",
+    "confirm": "تصدیق کریں",
+    "yes": "ہاں",
+    "no": "نہیں",
+    "loading": "لوڈ ہو رہا ہے...",
+    "error": "کچھ غلط ہو گیا",
+    "emptyState": "ابھی تک کچھ نہیں"
+  }
+}

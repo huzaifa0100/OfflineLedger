@@ -8,3 +8,13 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# WatermelonDB
+-keep class com.nozbe.watermelondb.** { *; }
+
+# MMKV
+-keep class com.tencent.mmkv.** { *; }
+
+# Bcrypt
+-keep class org.mindrot.jbcrypt.** { *; }
+

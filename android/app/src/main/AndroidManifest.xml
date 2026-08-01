@@ -1,6 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ── Network (kept for Metro dev server; remove in prod if desired) ── -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ── Camera ─────────────────────────────────────────────────────── -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- ── Media: Android 13+ (API 33+) ──────────────────────────────── -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- ── Media: Android 9–12 (API 28–32) ───────────────────────────── -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- ── Downloads dir write (for backup export) ───────────────────── -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
       android:name=".MainApplication"
