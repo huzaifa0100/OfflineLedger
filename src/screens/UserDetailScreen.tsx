@@ -23,7 +23,8 @@ import { typography, fontWeight } from '../theme/typography';
 import { spacing, radius, shadow } from '../theme/spacing';
 import { formatDate } from '../utils/formatters';
 import { UserStackParamList } from '../navigation/UserStackNavigator';
-import { deletePrivateFile } from '../utils/fileStorage';
+import { copyImageToPrivateStorage, deletePrivateFile } from '../utils/fileStorage';
+import { useImagePicker } from '../hooks/useImagePicker';
 
 type NavProp  = StackNavigationProp<UserStackParamList, 'UserDetail'>;
 type RoutePr  = RouteProp<UserStackParamList, 'UserDetail'>;
@@ -46,6 +47,19 @@ export function UserDetailScreen() {
   const [activeTab, setTab]   = useState<TabId>('profile');
   const [loading, setLoading] = useState(true);
 
+  const { pickFromGallery } = useImagePicker({
+    subDir: 'avatars',
+    onSuccess: async (savedPath) => {
+      if (user) {
+        if (user.avatarPath) {
+          await deletePrivateFile(user.avatarPath);
+        }
+        await user.updateDetails({ avatarPath: savedPath });
+      }
+    },
+    onError: (msg) => Alert.alert('Avatar Error', msg),
+  });
+
   useEffect(() => {
     let sub: any;
     usersCollection.findAndObserve(userId).subscribe(u => {
@@ -55,6 +69,10 @@ export function UserDetailScreen() {
     });
     return () => sub?.unsubscribe?.();
   }, [userId, navigation]);
+
+  const handleAvatarPress = useCallback(() => {
+    pickFromGallery();
+  }, [pickFromGallery]);
 
   const handleEdit = useCallback(() => {
     navigation.navigate('AddEditUser', { userId });
@@ -103,7 +121,21 @@ export function UserDetailScreen() {
     <View style={styles.screen}>
       {/* ── Header card ─────────────────────────────────────────────── */}
       <View style={styles.headerCard}>
-        <Avatar name={user.name} avatarPath={user.avatarPath} size={72} />
+        <View style={styles.avatarColumn}>
+          <Avatar
+            name={user.name}
+            avatarPath={user.avatarPath}
+            size={72}
+            enablePreview
+          />
+          <TouchableOpacity
+            style={styles.changePhotoBtn}
+            onPress={handleAvatarPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.changePhotoText}>Change Photo</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.headerInfo}>
           <Text style={styles.headerName} numberOfLines={1}>{user.name}</Text>
           <Text style={styles.headerPhone}>{user.phone}</Text>
@@ -225,6 +257,22 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     borderBottomWidth: 1,
     borderBottomColor: darkColors.border,
+  },
+  avatarColumn: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  changePhotoBtn: {
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: darkColors.surfaceVariant,
+  },
+  changePhotoText: {
+    ...typography.labelSmall,
+    fontSize: 10,
+    color: darkColors.primary,
+    fontWeight: fontWeight.bold,
   },
   headerInfo:  { flex: 1, gap: 2 },
   headerName:  { ...typography.h3, color: darkColors.textPrimary, fontWeight: fontWeight.bold },

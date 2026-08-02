@@ -1,7 +1,7 @@
 // OfflineLedger — User Stack Navigator
 // Handles the navigation stack inside the Users tab
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { UserListScreen } from '../screens/UserListScreen';
 import { AddEditUserScreen } from '../screens/AddEditUserScreen';
 import { UserDetailScreen } from '../screens/UserDetailScreen';
@@ -29,18 +29,19 @@ export function UserStackNavigator() {
         },
         headerTintColor: darkColors.textPrimary,
         headerTitleStyle: {
-          fontWeight: fontWeight.semibold,
-          fontSize: 17,
+          fontWeight: fontWeight.bold,
+          fontSize: 18,
           color: darkColors.textPrimary,
         },
         cardStyle: { backgroundColor: darkColors.background },
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         headerBackTitle: '',
       }}
     >
       <Stack.Screen
         name="UserList"
         component={UserListScreen}
-        options={{ title: 'Workers' }}
+        options={{ title: 'Clients' }}
       />
       <Stack.Screen
         name="UserDetail"
@@ -51,7 +52,7 @@ export function UserStackNavigator() {
         name="AddEditUser"
         component={AddEditUserScreen}
         options={({ route }) => ({
-          title: route.params?.userId ? 'Edit Worker' : 'Add Worker',
+          title: route.params?.userId ? 'Edit Client' : 'Add Client',
         })}
       />
     </Stack.Navigator>

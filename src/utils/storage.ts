@@ -1,13 +1,13 @@
 // OfflineLedger — MMKV Storage Singleton
 // Lazy instance initialization to prevent top-level module load crashes in React Native JSI
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV, MMKV } from 'react-native-mmkv';
 
 let _storageInstance: MMKV | null = null;
 
 export function getStorage(): MMKV | null {
   if (!_storageInstance) {
     try {
-      _storageInstance = new MMKV({ id: 'offlineledger-storage' });
+      _storageInstance = createMMKV({ id: 'offlineledger-storage' });
     } catch (e) {
       console.warn('[MMKV] Storage instantiation error:', e);
       return null;
@@ -27,14 +27,16 @@ export const storage = {
     getStorage()?.set(key, value);
   },
   delete(key: string): void {
-    getStorage()?.delete(key);
+    getStorage()?.remove(key);
   },
 };
 
 export const StorageKeys = {
-  PIN_HASH:       'auth.pinHash',
-  IS_LOCKED:      'auth.isLocked',
-  PIN_IS_SET:     'auth.pinIsSet',
-  APP_LANGUAGE:   'settings.language',
-  BACKUP_LAST_AT: 'settings.lastBackupAt',
+  PIN_HASH:          'auth.pinHash',
+  IS_LOCKED:         'auth.isLocked',
+  PIN_IS_SET:        'auth.pinIsSet',
+  BIOMETRIC_ENABLED: 'auth.biometricEnabled',
+  APP_LANGUAGE:      'settings.language',
+  BACKUP_LAST_AT:    'settings.lastBackupAt',
+  THEME_MODE:        'settings.themeMode',
 } as const;

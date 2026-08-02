@@ -116,7 +116,7 @@ export function AddEditUserScreen() {
       return false;
     }
     if (!isValidPhone(form.phone)) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid Pakistani phone number (e.g. 0319-0540450).');
+      Alert.alert('Invalid Phone Number', 'Please enter a valid Pakistani phone number (e.g. 03xx-xxxxxxx).');
       return false;
     }
     if (form.cnic.trim() && !isValidCnic(form.cnic)) {
@@ -182,7 +182,6 @@ export function AddEditUserScreen() {
             avatarPath={form.avatarPath}
             size={96}
             onPress={showAvatarPicker}
-            showEditOverlay
           />
           <TouchableOpacity onPress={showAvatarPicker} style={styles.changePhotoBtn}>
             <Text style={styles.changePhotoText}>
@@ -205,7 +204,7 @@ export function AddEditUserScreen() {
           label="Phone Number *"
           value={form.phone}
           onChange={setField('phone')}
-          placeholder="e.g. 0300-1234567"
+          placeholder="e.g. 03xx-xxxxxxx"
           keyboardType="phone-pad"
         />
         <Field

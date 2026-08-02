@@ -1,6 +1,6 @@
-// OfflineLedger — Settings Screen (Phases 8, 9, 10)
-// Backup/restore, PIN management, language selection, and app info.
-import React, { useState, useCallback } from 'react';
+// OfflineLedger — Settings Screen
+// Backup/restore, PIN management, Fingerprint setup, and App Info.
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,30 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
+import ReactNativeBiometrics from 'react-native-biometrics';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
-import { exportBackup, restoreBackup, shareBackupFile } from '../utils/exportBackup';
+import { useThemeStore } from '../store/useThemeStore';
+import { exportBackup, restoreBackup } from '../utils/exportBackup';
 import { storage, StorageKeys } from '../utils/storage';
 import { formatDate, formatTime } from '../utils/formatters';
-import { changeLanguage } from '../locales/i18n';
 import { darkColors } from '../theme/colors';
 import { typography, fontWeight } from '../theme/typography';
 import { spacing, radius } from '../theme/spacing';
+
+function getBiometricsInstance() {
+  try {
+    const BiometricsClass = (ReactNativeBiometrics as any)?.default || ReactNativeBiometrics;
+    if (typeof BiometricsClass === 'function') {
+      return new BiometricsClass({ allowDeviceCredentials: false });
+    }
+  } catch (e) {
+    console.warn('[SettingsScreen] Biometrics initialization skipped:', e);
+  }
+  return null;
+}
 
 // ── Setting Row Component ────────────────────────────────────────────────────
 
@@ -34,14 +48,21 @@ interface SettingRowProps {
 }
 
 function SettingRow({
-  icon, title, subtitle, onPress, rightContent, destructive, loading, disabled,
+  icon,
+  title,
+  subtitle,
+  onPress,
+  rightContent,
+  destructive,
+  loading,
+  disabled,
 }: SettingRowProps) {
   return (
     <TouchableOpacity
       style={[styles.row, disabled && styles.rowDisabled]}
       onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.7}
+      disabled={disabled || loading || !onPress}
+      activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={styles.rowIconWrap}>
         <Text style={styles.rowIcon}>{icon}</Text>
@@ -53,10 +74,11 @@ function SettingRow({
         {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
       </View>
       <View style={styles.rowRight}>
-        {loading
-          ? <ActivityIndicator size="small" color={darkColors.primary} />
-          : rightContent ?? <Text style={styles.rowChevron}>›</Text>
-        }
+        {loading ? (
+          <ActivityIndicator size="small" color={darkColors.primary} />
+        ) : (
+          rightContent ?? (onPress ? <Text style={styles.rowChevron}>›</Text> : null)
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -76,11 +98,36 @@ function SectionLabel({ text }: { text: string }) {
 // ── Settings Screen ──────────────────────────────────────────────────────────
 
 export function SettingsScreen() {
-  const { t, i18n } = useTranslation();
-  const { clearPin } = useAuthStore();
+  const { t } = useTranslation();
+  const {
+    clearPin,
+    isBiometricEnabled,
+    setBiometricEnabled,
+    isPinSet,
+  } = useAuthStore();
 
-  const [exporting,   setExporting]  = useState(false);
-  const [restoring,   setRestoring]  = useState(false);
+  const { themeMode, setThemeMode } = useThemeStore();
+
+  const [exporting, setExporting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [sensorType, setSensorType] = useState<string>('Fingerprint');
+
+  // Check biometrics sensor availability
+  useEffect(() => {
+    const instance = getBiometricsInstance();
+    if (!instance) return;
+
+    instance
+      .isSensorAvailable()
+      .then(({ available, biometryType }: { available: boolean; biometryType?: string }) => {
+        setBioAvailable(available);
+        if (biometryType === 'FaceID') setSensorType('Face ID');
+        else if (biometryType === 'TouchID') setSensorType('Touch ID');
+        else setSensorType('Fingerprint');
+      })
+      .catch(() => setBioAvailable(false));
+  }, []);
 
   const lastBackup = storage.getString(StorageKeys.BACKUP_LAST_AT);
   const lastBackupLabel = lastBackup
@@ -92,19 +139,17 @@ export function SettingsScreen() {
     setExporting(true);
     try {
       const zipPath = await exportBackup();
+      const fileName = zipPath.split('/').pop() ?? 'OfflineLedger_backup.zip';
       Alert.alert(
-        '✅ Backup Saved',
-        `Backup saved to your Downloads folder.\n\nWould you like to share it?`,
-        [
-          { text: 'No Thanks', style: 'cancel' },
-          {
-            text: 'Share',
-            onPress: () => shareBackupFile(zipPath),
-          },
-        ],
+        '✅ Backup Saved Successfully',
+        `Your backup file has been created and saved to your Downloads folder!\n\n📄 File: ${fileName}\n📍 Location: ${zipPath}`,
+        [{ text: 'Great!' }],
       );
     } catch (err: any) {
-      Alert.alert('Export Failed', err?.message ?? 'Could not create backup');
+      Alert.alert(
+        '❌ Backup Failed',
+        err?.message ?? 'Could not create backup file. Please check device permissions and storage.',
+      );
     } finally {
       setExporting(false);
     }
@@ -139,7 +184,7 @@ export function SettingsScreen() {
   const handleResetPin = useCallback(() => {
     Alert.alert(
       'Reset PIN',
-      'This will remove your PIN lock. The app will ask you to set a new PIN on next launch.',
+      'This will remove your PIN lock and disable biometrics. You will be prompted to set a new PIN on next launch.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -154,18 +199,44 @@ export function SettingsScreen() {
     );
   }, [clearPin]);
 
-  // ── Language ─────────────────────────────────────────────────────────────
-  const handleLanguage = useCallback(() => {
-    const current = i18n.language;
-    const next = current === 'en' ? 'ur' : 'en';
-    changeLanguage(next as 'en' | 'ur');
-    Alert.alert(
-      'Language Changed',
-      next === 'ur'
-        ? 'زبان اردو میں تبدیل کر دی گئی۔'
-        : 'Language changed to English.',
-    );
-  }, [i18n.language]);
+  // ── Toggle Biometrics ────────────────────────────────────────────────────
+  const handleToggleBiometrics = useCallback(
+    async (val: boolean) => {
+      if (!isPinSet) {
+        Alert.alert(
+          'PIN Required',
+          'Please set up a 4-digit PIN lock first before enabling biometric authentication.',
+        );
+        return;
+      }
+
+      if (!val) {
+        setBiometricEnabled(false);
+        return;
+      }
+
+      // Test sensor prompt before enabling
+      try {
+        const instance = getBiometricsInstance();
+        if (!instance) {
+          Alert.alert('Error', 'Biometrics sensor non-responsive');
+          return;
+        }
+        const { success } = await instance.simplePrompt({
+          promptMessage: `Verify ${sensorType} to enable lock`,
+          cancelButtonText: 'Cancel',
+        });
+
+        if (success) {
+          setBiometricEnabled(true);
+          Alert.alert('Enabled', `${sensorType} unlock is now active.`);
+        }
+      } catch (e) {
+        // User cancelled prompt
+      }
+    },
+    [isPinSet, sensorType, setBiometricEnabled],
+  );
 
   return (
     <ScrollView
@@ -194,60 +265,65 @@ export function SettingsScreen() {
         />
       </View>
 
-      {/* ── Security ──────────────────────────────────────────────────── */}
-      <SectionLabel text="Security" />
+      {/* ── Security & Biometrics ──────────────────────────────────────────── */}
+      <SectionLabel text="Security & Biometrics" />
 
       <View style={styles.card}>
         <SettingRow
+          icon="☝️"
+          title={`${sensorType} Unlock`}
+          subtitle={
+            bioAvailable
+              ? isBiometricEnabled
+                ? `Enabled for quick access`
+                : `Tap switch to setup ${sensorType} lock`
+              : `Sensor not detected on device`
+          }
+          disabled={!bioAvailable}
+          rightContent={
+            <Switch
+              value={isBiometricEnabled}
+              onValueChange={handleToggleBiometrics}
+              disabled={!bioAvailable}
+              trackColor={{ false: darkColors.border, true: darkColors.primaryContainer }}
+              thumbColor={isBiometricEnabled ? darkColors.primary : darkColors.textDisabled}
+            />
+          }
+        />
+        <View style={styles.divider} />
+        <SettingRow
           icon="🔑"
-          title="Reset PIN"
-          subtitle="Remove and reset your app lock PIN"
+          title="Reset PIN Code"
+          subtitle="Remove current PIN and biometrics"
           onPress={handleResetPin}
           destructive
         />
       </View>
 
-      {/* ── Localization ──────────────────────────────────────────────── */}
-      <SectionLabel text="Language" />
-
-      <View style={styles.card}>
-        <SettingRow
-          icon="🌐"
-          title="App Language"
-          subtitle={i18n.language === 'en' ? 'English (tap to switch to Urdu)' : 'اردو (انگریزی کے لیے ٹیپ کریں)'}
-          onPress={handleLanguage}
-          rightContent={
-            <View style={styles.langBadge}>
-              <Text style={styles.langBadgeText}>
-                {i18n.language.toUpperCase()}
-              </Text>
-            </View>
-          }
-        />
-      </View>
-
       {/* ── About ─────────────────────────────────────────────────────── */}
-      <SectionLabel text="About" />
+      <SectionLabel text="About App" />
 
       <View style={styles.card}>
         <SettingRow
           icon="📱"
           title="OfflineLedger"
-          subtitle="Version 1.0.0 — All data stored on device"
+          subtitle="Version 1.0.0 — Privacy Focused Ledger"
           rightContent={<View />}
         />
         <View style={styles.divider} />
         <SettingRow
           icon="🔒"
-          title="Privacy"
-          subtitle="No internet connection. No data leaves your device."
+          title="100% Offline Storage"
+          subtitle="Zero cloud servers. All data stays local."
           rightContent={<View />}
         />
       </View>
 
-      <Text style={styles.footer}>
-        OfflineLedger v1.0 · Built with ❤️ · Zero Cloud · 100% Offline
-      </Text>
+      <View style={styles.footerContainer}>
+        <Text style={styles.footerBrand}>OfflineLedger v1.0.0</Text>
+        <Text style={styles.footerDev}>Engineered by CORE TECH AI Team</Text>
+        <Text style={styles.footerCopy}>© {new Date().getFullYear()} CORE TECH. All Rights Reserved.</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -255,8 +331,8 @@ export function SettingsScreen() {
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: darkColors.background },
-  content: { padding: spacing[4], paddingBottom: spacing[10] },
+  screen: { flex: 1, backgroundColor: darkColors.background },
+  content: { padding: spacing[4], paddingBottom: spacing[12] },
 
   sectionLabel: {
     flexDirection: 'row',
@@ -325,26 +401,44 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: darkColors.textDisabled,
   },
-
-  langBadge: {
+  activeCheck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: darkColors.primaryContainer,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
     borderWidth: 1,
     borderColor: darkColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  langBadgeText: {
-    ...typography.labelSmall,
-    color: darkColors.primary,
+  checkText: {
+    fontSize: 14,
     fontWeight: fontWeight.bold,
+    color: darkColors.primary,
   },
 
-  footer: {
+  footerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[8],
+    marginBottom: spacing[4],
+    gap: spacing[1],
+  },
+  footerBrand: {
+    ...typography.labelMedium,
+    color: darkColors.primary,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  footerDev: {
+    ...typography.bodySmall,
+    color: darkColors.textSecondary,
+    fontWeight: fontWeight.medium,
+  },
+  footerCopy: {
     ...typography.labelSmall,
     color: darkColors.textDisabled,
-    textAlign: 'center',
-    marginTop: spacing[8],
-    lineHeight: 18,
+    fontSize: 11,
+    letterSpacing: 0.2,
   },
 });

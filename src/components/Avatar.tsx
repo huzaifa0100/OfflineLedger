@@ -1,6 +1,4 @@
-// OfflineLedger — Avatar Component
-// Circular image with initials fallback and tap-to-change overlay
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Image,
@@ -8,18 +6,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { toImageUri } from '../utils/fileStorage';
 import { getInitials, getAvatarColor } from '../utils/formatters';
 import { darkColors } from '../theme/colors';
-import { fontWeight } from '../theme/typography';
+import { fontWeight, typography } from '../theme/typography';
+import { spacing, radius } from '../theme/spacing';
 
 interface AvatarProps {
   name: string;
   avatarPath?: string | null;
   size?: number;
-  onPress?: () => void;       // If provided, shows edit overlay
-  showEditOverlay?: boolean;
+  onPress?: () => void;
+  enablePreview?: boolean;
   style?: object;
 }
 
@@ -28,11 +28,16 @@ export function Avatar({
   avatarPath,
   size = 72,
   onPress,
-  showEditOverlay = false,
+  enablePreview = true,
   style,
 }: AvatarProps) {
-  const [loading, setLoading] = React.useState(false);
-  const [imageError, setImageError] = React.useState(false);
+  const [loading, setLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [avatarPath]);
 
   const uri = toImageUri(avatarPath);
   const initials = getInitials(name || '?');
@@ -40,6 +45,14 @@ export function Avatar({
   const fontSize = size * 0.38;
 
   const showImage = uri && !imageError;
+
+  const handleTap = () => {
+    if (onPress) {
+      onPress();
+    } else if (enablePreview && showImage) {
+      setModalVisible(true);
+    }
+  };
 
   const content = (
     <View
@@ -79,25 +92,48 @@ export function Avatar({
           {initials}
         </Text>
       )}
-
-      {/* Edit overlay */}
-      {showEditOverlay && (
-        <View style={[styles.editOverlay, { borderRadius: size / 2 }]}>
-          <Text style={styles.editIcon}>✎</Text>
-        </View>
-      )}
     </View>
   );
 
-  if (onPress) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+  return (
+    <>
+      <TouchableOpacity
+        onPress={handleTap}
+        activeOpacity={0.85}
+        disabled={!onPress && (!enablePreview || !showImage)}
+      >
         {content}
       </TouchableOpacity>
-    );
-  }
 
-  return content;
+      {/* Fullscreen Avatar Modal Viewer */}
+      {showImage && (
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBg}>
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setModalVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalCloseText}>✕</Text>
+            </TouchableOpacity>
+
+            <Image
+              source={{ uri }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+
+            <Text style={styles.modalTitle}>{name}</Text>
+          </View>
+        </Modal>
+      )}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -110,14 +146,39 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     letterSpacing: 1,
   },
-  editOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing[4],
   },
-  editIcon: {
-    fontSize: 22,
+  modalClose: {
+    position: 'absolute',
+    top: spacing[10],
+    right: spacing[6],
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  modalCloseText: {
+    fontSize: 20,
     color: '#FFFFFF',
+    fontWeight: fontWeight.bold,
+  },
+  previewImage: {
+    width: '90%',
+    height: '65%',
+    borderRadius: radius.lg,
+  },
+  modalTitle: {
+    ...typography.h2,
+    color: '#FFFFFF',
+    marginTop: spacing[4],
+    fontWeight: fontWeight.bold,
   },
 });

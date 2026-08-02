@@ -9,6 +9,7 @@ import {
   StyleSheet,
   StatusBar,
   ListRenderItem,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -26,13 +27,17 @@ export function UserListScreen() {
   const navigation = useNavigation<NavProp>();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // Subscribe to the users collection — re-renders automatically on any DB change
   useEffect(() => {
     const subscription = usersCollection
       .query()
       .observe()
-      .subscribe(users => setAllUsers(users));
+      .subscribe(users => {
+        setAllUsers(users);
+        setLoading(false);
+      });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -82,6 +87,14 @@ export function UserListScreen() {
   const ListHeader = useCallback(
     () => (
       <View style={styles.headerContainer}>
+        {/* Screen Title */}
+        <View style={styles.titleArea}>
+          <Text style={styles.screenTitle}>Clients</Text>
+          <Text style={styles.screenSubtitle}>
+            {filteredUsers.length} of {allUsers.length} registered clients
+          </Text>
+        </View>
+
         {/* Search bar */}
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -102,16 +115,19 @@ export function UserListScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {/* Count badge */}
-        {allUsers.length > 0 && (
-          <Text style={styles.countLabel}>
-            {filteredUsers.length} of {allUsers.length} workers
-          </Text>
-        )}
       </View>
     ),
     [query, allUsers.length, filteredUsers.length],
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={darkColors.primary} />
+        <Text style={styles.loadingText}>Loading Clients...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -152,6 +168,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: darkColors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: darkColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
+  loadingText: {
+    ...typography.bodyMedium,
+    color: darkColors.textSecondary,
+  },
   listContent: {
     paddingBottom: 100, // room for FAB
     paddingTop: spacing[2],
@@ -162,8 +189,22 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[3],
-    gap: spacing[2],
+    gap: spacing[3],
+  },
+  titleArea: {
+    gap: 2,
+  },
+  screenTitle: {
+    ...typography.h1,
+    color: darkColors.textPrimary,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  screenSubtitle: {
+    ...typography.bodySmall,
+    color: darkColors.textSecondary,
   },
   searchBar: {
     flexDirection: 'row',

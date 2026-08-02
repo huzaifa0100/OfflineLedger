@@ -37,6 +37,41 @@ export function formatCurrency(amount: number): string {
   });
 }
 
+/**
+ * Compact currency formatter for list items and badges.
+ * Converts numbers into compact K/M/B units with points handled cleanly:
+ * - 950 -> "950"
+ * - 1,500 -> "1.5K"
+ * - 100,000 -> "100K"
+ * - 1,250,000 -> "1.25M"
+ * - 1,000,000,000 -> "1B"
+ */
+export function formatCompactCurrency(amount: number): string {
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+
+  if (absAmount < 1000) {
+    return `${sign}${absAmount.toLocaleString('en-PK', { maximumFractionDigits: 1 })}`;
+  }
+
+  const lookup = [
+    { value: 1e12, symbol: 'T' },
+    { value: 1e9, symbol: 'B' },
+    { value: 1e6, symbol: 'M' },
+    { value: 1e3, symbol: 'K' },
+  ];
+
+  const item = lookup.find(l => absAmount >= l.value);
+  if (!item) return `${sign}${absAmount}`;
+
+  const formatted = (absAmount / item.value)
+    .toFixed(2)
+    .replace(/\.00$/, '')
+    .replace(/(\.\d)0$/, '$1');
+
+  return `${sign}${formatted}${item.symbol}`;
+}
+
 /** Format a Date as "Jan 15, 2025" */
 export function formatDate(date: Date): string {
   return date.toLocaleDateString('en-PK', {
@@ -55,7 +90,7 @@ export function formatTime(date: Date): string {
   });
 }
 
-/** Auto-format Pakistani phone number (e.g. 03190540450 -> 0319-0540450) */
+/** Auto-format Pakistani phone number (e.g. 03xx-xxxxxxx) */
 export function formatPhoneInput(text: string): string {
   const digits = text.replace(/\D/g, '');
   if (digits.length <= 4) return digits;
@@ -65,7 +100,7 @@ export function formatPhoneInput(text: string): string {
 /** Validate Pakistani phone number format */
 export function isValidPhone(phone: string): boolean {
   const digits = phone.replace(/\D/g, '');
-  // Valid Pakistani phone numbers: 11 digits starting with 03 (e.g. 03190540450) or 12 digits starting with 923
+  // Valid Pakistani phone numbers: 11 digits starting with 03 (e.g. 03xx-xxxxxxx) or 12 digits starting with 923
   return /^03\d{9}$/.test(digits) || /^923\d{9}$/.test(digits);
 }
 

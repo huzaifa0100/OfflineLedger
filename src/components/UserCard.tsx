@@ -1,11 +1,11 @@
-// OfflineLedger — UserCard Component
-// Tappable list row: avatar + name + phone + chevron
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+// OfflineLedger — Modernized UserCard Component with Touch Transitions
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Avatar } from './Avatar';
 import { darkColors } from '../theme/colors';
 import { typography, fontWeight } from '../theme/typography';
-import { spacing, radius } from '../theme/spacing';
+import { spacing, radius, shadow } from '../theme/spacing';
+import { formatCompactCurrency } from '../utils/formatters';
 import { User } from '../db/models/User';
 
 interface UserCardProps {
@@ -14,42 +14,85 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, onPress }: UserCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
+  };
+
+  const balance = user.totalBalance ?? 0;
+  const isBalanceNegative = balance < 0;
+
   return (
     <TouchableOpacity
-      style={styles.card}
+      activeOpacity={0.85}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       onPress={() => onPress(user)}
-      activeOpacity={0.7}
     >
-      <Avatar
-        name={user.name}
-        avatarPath={user.avatarPath}
-        size={52}
-      />
+      <Animated.View
+        style={[
+          styles.card,
+          { transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        <Avatar name={user.name} avatarPath={user.avatarPath} size={52} />
 
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {user.name}
-        </Text>
-        <Text style={styles.phone} numberOfLines={1}>
-          {user.phone}
-        </Text>
-        {!!user.cnic && (
-          <Text style={styles.cnic} numberOfLines={1}>
-            {user.cnic}
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {user.name}
           </Text>
-        )}
-      </View>
-
-      {/* Balance chip */}
-      <View style={styles.right}>
-        <View style={styles.balanceChip}>
-          <Text style={styles.balanceLabel}>PKR</Text>
-          <Text style={styles.balanceAmount} numberOfLines={1}>
-            {user.totalBalance.toLocaleString('en-PK')}
+          <Text style={styles.phone} numberOfLines={1}>
+            {user.phone}
           </Text>
+          {!!user.cnic && (
+            <Text style={styles.cnic} numberOfLines={1}>
+              🆔 {user.cnic}
+            </Text>
+          )}
         </View>
-        <Text style={styles.chevron}>›</Text>
-      </View>
+
+        {/* Compact & Responsive Balance chip */}
+        <View style={styles.right}>
+          <View
+            style={[
+              styles.balanceChip,
+              isBalanceNegative ? styles.chipNegative : styles.chipPositive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.balanceLabel,
+                isBalanceNegative ? styles.textNegative : styles.textPositive,
+              ]}
+            >
+              BALANCE
+            </Text>
+            <Text
+              style={[
+                styles.balanceAmount,
+                isBalanceNegative ? styles.textNegative : styles.textPositive,
+              ]}
+              numberOfLines={1}
+            >
+              Rs {formatCompactCurrency(balance)}
+            </Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -60,13 +103,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: darkColors.card,
     marginHorizontal: spacing[4],
-    marginVertical: spacing[1],
+    marginVertical: spacing[1.5],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: darkColors.cardBorder,
     gap: spacing[3],
+    ...shadow.sm,
   },
   info: {
     flex: 1,
@@ -75,7 +119,7 @@ const styles = StyleSheet.create({
   name: {
     ...typography.labelLarge,
     color: darkColors.textPrimary,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
   },
   phone: {
     ...typography.bodySmall,
@@ -84,29 +128,52 @@ const styles = StyleSheet.create({
   cnic: {
     ...typography.labelSmall,
     color: darkColors.textDisabled,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   right: {
-    alignItems: 'flex-end',
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
   },
   balanceChip: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: radius.md,
+    borderWidth: 1,
+    minWidth: 90,
+  },
+  chipPositive: {
+    backgroundColor: 'rgba(240, 165, 0, 0.12)',
+    borderColor: 'rgba(240, 165, 0, 0.4)',
+  },
+  chipNegative: {
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderColor: 'rgba(248, 113, 113, 0.4)',
   },
   balanceLabel: {
-    ...typography.labelSmall,
-    color: darkColors.textDisabled,
-    fontSize: 10,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+    lineHeight: 11,
+    textAlign: 'center',
+  },
+  textPositive: {
+    color: darkColors.primary,
+  },
+  textNegative: {
+    color: darkColors.error,
   },
   balanceAmount: {
-    ...typography.labelMedium,
-    color: darkColors.primary,
-    fontWeight: fontWeight.bold,
-    maxWidth: 90,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 16,
+    textAlign: 'center',
   },
   chevron: {
-    fontSize: 20,
+    fontSize: 22,
     color: darkColors.textDisabled,
-    lineHeight: 22,
   },
 });

@@ -17,7 +17,9 @@ interface AuthStore {
   // State
   isLocked: boolean;
   isPinSet: boolean;
+  isBiometricEnabled: boolean;
   isPickingMedia: boolean;
+  ignoreLockUntil: number;
 
   // Actions
   initFromStorage: () => void;
@@ -26,6 +28,7 @@ interface AuthStore {
   unlock: () => void;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
+  setBiometricEnabled: (enabled: boolean) => void;
   biometricUnlock: () => void;
   clearPin: () => void;
 }
@@ -34,24 +37,38 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   // ── Default initial state ─────────────────────────────────────────
   isLocked: true,
   isPinSet: false,
+  isBiometricEnabled: false,
   isPickingMedia: false,
+  ignoreLockUntil: 0,
 
-  setPickingMedia: (picking: boolean) => set({ isPickingMedia: picking }),
+  setPickingMedia: (picking: boolean) => {
+    set({
+      isPickingMedia: picking,
+      // When picker closes, set 3-second grace period where lock calls are ignored
+      ignoreLockUntil: picking ? Date.now() + 60000 : Date.now() + 3000,
+    });
+  },
 
   // ── Load state runtime from MMKV ─────────────────────────────────────────
   initFromStorage: () => {
     try {
       const isPinSet = storage.getBoolean(StorageKeys.PIN_IS_SET) ?? false;
       const isLocked = storage.getBoolean(StorageKeys.IS_LOCKED) ?? true;
-      set({ isPinSet, isLocked: isPinSet ? isLocked : false });
+      const isBiometricEnabled = storage.getBoolean(StorageKeys.BIOMETRIC_ENABLED) ?? false;
+      set({
+        isPinSet,
+        isLocked: isPinSet ? isLocked : false,
+        isBiometricEnabled,
+      });
     } catch (e) {
       console.warn('[useAuthStore] initFromStorage error:', e);
     }
   },
 
   lock: () => {
-    // If user is currently picking camera/gallery media, ignore auto-lock
-    if (get().isPickingMedia) return;
+    const state = get();
+    // If user is currently picking media OR inside the post-picker grace period, ignore lock
+    if (state.isPickingMedia || Date.now() < state.ignoreLockUntil) return;
     try { storage.set(StorageKeys.IS_LOCKED, true); } catch {}
     set({ isLocked: true });
   },
@@ -78,16 +95,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const stored = storage.getString(StorageKeys.PIN_HASH);
       if (!stored) return false;
 
-      const valid = hashPin(pin) === stored;
-      if (valid) {
-        storage.set(StorageKeys.IS_LOCKED, false);
-        set({ isLocked: false });
-      }
-      return valid;
+      return hashPin(pin) === stored;
     } catch (e) {
       console.warn('[useAuthStore] verifyPin error:', e);
       return false;
     }
+  },
+
+  setBiometricEnabled: (enabled: boolean) => {
+    try {
+      storage.set(StorageKeys.BIOMETRIC_ENABLED, enabled);
+    } catch (e) {
+      console.warn('[useAuthStore] Failed to set biometric enabled:', e);
+    }
+    set({ isBiometricEnabled: enabled });
   },
 
   biometricUnlock: () => {
@@ -100,7 +121,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       storage.delete(StorageKeys.PIN_HASH);
       storage.set(StorageKeys.PIN_IS_SET, false);
       storage.set(StorageKeys.IS_LOCKED, false);
+      storage.set(StorageKeys.BIOMETRIC_ENABLED, false);
     } catch {}
-    set({ isPinSet: false, isLocked: false });
+    set({ isPinSet: false, isLocked: false, isBiometricEnabled: false });
   },
 }));

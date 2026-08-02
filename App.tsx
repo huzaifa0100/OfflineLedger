@@ -8,17 +8,18 @@
 // Phase 10: initialize i18next before anything renders
 import './src/locales/i18n';
 
-import React, { useEffect, useRef } from 'react';
-import { StatusBar, AppState, AppStateStatus } from 'react-native';
+import React, { useEffect } from 'react';
+import { StatusBar, useColorScheme } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { AppDarkTheme } from './src/theme';
+import { AppDarkTheme, AppLightTheme } from './src/theme';
 import { useAuthStore } from './src/store/useAuthStore';
+import { useThemeStore } from './src/store/useThemeStore';
 
-const NAV_THEME = {
+const NAV_DARK_THEME = {
   dark: true,
   colors: {
     primary:      '#F0A500',
@@ -29,7 +30,25 @@ const NAV_THEME = {
     notification: '#F0A500',
   },
   fonts: {
-    regular:  { fontFamily: 'Roboto',       fontWeight: '400' as const },
+    regular:  { fontFamily: 'Roboto',        fontWeight: '400' as const },
+    medium:   { fontFamily: 'Roboto-Medium', fontWeight: '500' as const },
+    bold:     { fontFamily: 'Roboto-Bold',   fontWeight: '700' as const },
+    heavy:    { fontFamily: 'Roboto-Bold',   fontWeight: '900' as const },
+  },
+};
+
+const NAV_LIGHT_THEME = {
+  dark: false,
+  colors: {
+    primary:      '#1B2E45',
+    background:   '#F9FAFB',
+    card:         '#FFFFFF',
+    text:         '#111827',
+    border:       '#E5E7EB',
+    notification: '#10B981',
+  },
+  fonts: {
+    regular:  { fontFamily: 'Roboto',        fontWeight: '400' as const },
     medium:   { fontFamily: 'Roboto-Medium', fontWeight: '500' as const },
     bold:     { fontFamily: 'Roboto-Bold',   fontWeight: '700' as const },
     heavy:    { fontFamily: 'Roboto-Bold',   fontWeight: '900' as const },
@@ -37,42 +56,32 @@ const NAV_THEME = {
 };
 
 function App() {
-  const lock = useAuthStore(state => state.lock);
   const initFromStorage = useAuthStore(state => state.initFromStorage);
-  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const { themeMode, initTheme } = useThemeStore();
+  const systemColorScheme = useColorScheme();
 
   useEffect(() => {
     initFromStorage();
-  }, [initFromStorage]);
+    initTheme();
+  }, [initFromStorage, initTheme]);
 
-  // ── Phase 9: auto-lock on background ─────────────────────────────────────
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      const wasActive = appState.current === 'active';
-      const goingBackground = nextState === 'background';
-      const isPicking = useAuthStore.getState().isPickingMedia;
+  // Determine active theme
+  const isDark = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
+  const paperTheme = isDark ? AppDarkTheme : AppLightTheme;
+  const navTheme = isDark ? NAV_DARK_THEME : NAV_LIGHT_THEME;
 
-      // Never lock if app is currently picking camera/gallery media or showing permission dialogs
-      if (wasActive && goingBackground && !isPicking) {
-        lock();
-      }
-
-      appState.current = nextState;
-    });
-
-    return () => subscription.remove();
-  }, [lock]);
+  // Note: App only requires PIN unlock on complete cold start / app launch or manual lock
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <PaperProvider theme={AppDarkTheme}>
+        <PaperProvider theme={paperTheme}>
           <StatusBar
-            barStyle="light-content"
-            backgroundColor="#0D1B2A"
+            barStyle={isDark ? 'light-content' : 'dark-content'}
+            backgroundColor={isDark ? '#0D1B2A' : '#F9FAFB'}
             translucent={false}
           />
-          <NavigationContainer theme={NAV_THEME}>
+          <NavigationContainer theme={navTheme}>
             <RootNavigator />
           </NavigationContainer>
         </PaperProvider>

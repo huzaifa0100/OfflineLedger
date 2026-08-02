@@ -9,7 +9,7 @@ import { AdvanceEntry } from './models/AdvanceEntry';
 
 const adapter = new SQLiteAdapter({
   schema,
-  // migrations: migrations, // Uncomment when you add schema migrations
+  dbName: 'offlineledger',
   jsi: true,          // Use JSI for best performance on RN 0.71+
   onSetUpError: error => {
     console.error('[WatermelonDB] Setup error:', error);
@@ -22,7 +22,7 @@ export const database = new Database({
 });
 
 // Convenience collection accessors
-export const usersCollection      = database.get<User>('users');
-export const documentsCollection  = database.get<Document>('documents');
-export const notesCollection      = database.get<Note>('notes');
-export const advancesCollection   = database.get<AdvanceEntry>('advance_entries');
+export const usersCollection = database.get<User>('users');
+export const documentsCollection = database.get<Document>('documents');
+export const notesCollection = database.get<Note>('notes');
+export const advancesCollection = database.get<AdvanceEntry>('advance_entries');
