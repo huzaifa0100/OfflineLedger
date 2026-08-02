@@ -1,5 +1,5 @@
 // OfflineLedger — Add / Edit User Screen (Full Implementation)
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Avatar } from '../components/Avatar';
@@ -46,6 +47,9 @@ export function AddEditUserScreen() {
   const userId = route.params?.userId;
   const isEdit = Boolean(userId);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardPadding, setKeyboardPadding] = useState(0);
+
   const [existingUser, setExistingUser] = useState<User | null>(null);
   const [form, setForm] = useState<FormState>({
     name: '',
@@ -59,6 +63,25 @@ export function AddEditUserScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      e => {
+        setKeyboardPadding(e.endCoordinates.height + 20);
+      },
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardPadding(0);
+      },
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     navigation.setOptions({
       title: isEdit ? 'Edit Client' : 'Add New Client',
     });
@@ -70,13 +93,13 @@ export function AddEditUserScreen() {
     usersCollection.find(userId).then(user => {
       setExistingUser(user);
       setForm({
-        name:          user.name ?? '',
-        phone:         user.phone ?? '',
-        email:         user.email ?? '',
-        address:       user.address ?? '',
-        cnic:          user.cnic ?? '',
-        avatarPath:    user.avatarPath ?? '',
-        totalBalance:  String(user.totalBalance ?? 0),
+        name: user.name ?? '',
+        phone: user.phone ?? '',
+        email: user.email ?? '',
+        address: user.address ?? '',
+        cnic: user.cnic ?? '',
+        avatarPath: user.avatarPath ?? '',
+        totalBalance: String(user.totalBalance ?? 0),
       });
     });
   }, [userId]);
@@ -85,7 +108,7 @@ export function AddEditUserScreen() {
     (key: keyof FormState) => (value: string) => {
       let formatted = value;
       if (key === 'phone') formatted = formatPhoneInput(value);
-      if (key === 'cnic')  formatted = formatCnicInput(value);
+      if (key === 'cnic') formatted = formatCnicInput(value);
       setForm(prev => ({ ...prev, [key]: formatted }));
     },
     [],
@@ -100,7 +123,7 @@ export function AddEditUserScreen() {
 
   const showAvatarPicker = useCallback(() => {
     Alert.alert('Profile Photo', 'Choose a source', [
-      { text: 'Camera',          onPress: pickFromCamera  },
+      { text: 'Camera', onPress: pickFromCamera },
       { text: 'Choose from Gallery', onPress: pickFromGallery },
       { text: 'Cancel', style: 'cancel' },
     ]);
@@ -134,23 +157,23 @@ export function AddEditUserScreen() {
 
       if (isEdit && existingUser) {
         await existingUser.updateDetails({
-          name:         form.name.trim(),
-          phone:        form.phone.trim(),
-          email:        form.email.trim(),
-          address:      form.address.trim(),
-          cnic:         form.cnic.trim(),
-          avatarPath:   form.avatarPath,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          address: form.address.trim(),
+          cnic: form.cnic.trim(),
+          avatarPath: form.avatarPath,
           totalBalance: balance,
         });
       } else {
         await database.write(async () => {
           await usersCollection.create(record => {
-            record.name         = form.name.trim();
-            record.phone        = form.phone.trim();
-            record.email        = form.email.trim();
-            record.address      = form.address.trim();
-            record.cnic         = form.cnic.trim();
-            record.avatarPath   = form.avatarPath;
+            record.name = form.name.trim();
+            record.phone = form.phone.trim();
+            record.email = form.email.trim();
+            record.address = form.address.trim();
+            record.cnic = form.cnic.trim();
+            record.avatarPath = form.avatarPath;
             record.totalBalance = balance;
           });
         });
@@ -164,14 +187,28 @@ export function AddEditUserScreen() {
     }
   }, [form, isEdit, existingUser, navigation]);
 
+  const handleFieldFocus = useCallback((yOffset?: number) => {
+    setTimeout(() => {
+      if (yOffset !== undefined) {
+        scrollRef.current?.scrollTo({ y: yOffset, animated: true });
+      } else {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    }, 150);
+  }, []);
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing[12] + keyboardPadding },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -199,6 +236,7 @@ export function AddEditUserScreen() {
           onChange={setField('name')}
           placeholder="e.g. Ali Hassan"
           autoCapitalize="words"
+          onFocusOffset={() => handleFieldFocus(60)}
         />
         <Field
           label="Phone Number *"
@@ -206,6 +244,7 @@ export function AddEditUserScreen() {
           onChange={setField('phone')}
           placeholder="e.g. 03xx-xxxxxxx"
           keyboardType="phone-pad"
+          onFocusOffset={() => handleFieldFocus(140)}
         />
         <Field
           label="CNIC"
@@ -213,6 +252,7 @@ export function AddEditUserScreen() {
           onChange={setField('cnic')}
           placeholder="e.g. 42201-1234567-1"
           keyboardType="numeric"
+          onFocusOffset={() => handleFieldFocus(220)}
         />
 
         {/* Section: Optional Details */}
@@ -225,6 +265,7 @@ export function AddEditUserScreen() {
           placeholder="e.g. ali@example.com"
           keyboardType="email-address"
           autoCapitalize="none"
+          onFocusOffset={() => handleFieldFocus(320)}
         />
         <Field
           label="Address"
@@ -232,6 +273,7 @@ export function AddEditUserScreen() {
           onChange={setField('address')}
           placeholder="e.g. House 5, Block B, Karachi"
           multiline
+          onFocusOffset={() => handleFieldFocus(420)}
         />
 
         {/* Section: Balance */}
@@ -244,6 +286,7 @@ export function AddEditUserScreen() {
           placeholder="0"
           keyboardType="numeric"
           hint="This is the total salary or agreed amount for this worker"
+          onFocusOffset={() => handleFieldFocus(480)}
         />
 
         {/* Save button */}
@@ -286,6 +329,7 @@ interface FieldProps {
   autoCapitalize?: any;
   multiline?: boolean;
   hint?: string;
+  onFocusOffset?: () => void;
 }
 
 function Field({
@@ -297,6 +341,7 @@ function Field({
   autoCapitalize = 'sentences',
   multiline = false,
   hint,
+  onFocusOffset,
 }: FieldProps) {
   const [focused, setFocused] = useState(false);
   return (
@@ -316,7 +361,10 @@ function Field({
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocusOffset?.();
+        }}
         onBlur={() => setFocused(false)}
       />
       {hint && <Text style={fieldStyles.hint}>{hint}</Text>}

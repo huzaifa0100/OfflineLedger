@@ -13,6 +13,7 @@ import {
 import { DocumentsScreen } from './DocumentsScreen';
 import { NotepadScreen } from './NotepadScreen';
 import { BalanceScreen } from './BalanceScreen';
+import { ReceiptsScreen } from './ReceiptsScreen';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Avatar } from '../components/Avatar';
@@ -29,13 +30,14 @@ import { useImagePicker } from '../hooks/useImagePicker';
 type NavProp  = StackNavigationProp<UserStackParamList, 'UserDetail'>;
 type RoutePr  = RouteProp<UserStackParamList, 'UserDetail'>;
 
-type TabId = 'profile' | 'documents' | 'notepad' | 'balance';
+type TabId = 'profile' | 'documents' | 'notepad' | 'balance' | 'receipts';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profile',   label: 'Profile',   icon: '👤' },
   { id: 'documents', label: 'Docs',      icon: '📄' },
   { id: 'notepad',   label: 'Notes',     icon: '📝' },
   { id: 'balance',   label: 'Balance',   icon: '💰' },
+  { id: 'receipts',  label: 'Receipts',  icon: '🧾' },
 ];
 
 export function UserDetailScreen() {
@@ -188,6 +190,7 @@ export function UserDetailScreen() {
         {activeTab === 'documents' && <DocumentsScreen userId={userId} />}
         {activeTab === 'notepad'   && <NotepadScreen   userId={userId} />}
         {activeTab === 'balance'   && <BalanceScreen   userId={userId} />}
+        {activeTab === 'receipts'  && <ReceiptsScreen  userId={userId} />}
       </View>
     </View>
   );
